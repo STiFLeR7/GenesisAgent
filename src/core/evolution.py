@@ -1,52 +1,32 @@
 import random
+from rich.console import Console
 from src.core.generator import IdeaGenerator
+from src.core.polisher import IdeaPolisher
+from src.core.mutator import IdeaMutator
+
+console = Console()
 
 class EvolutionEngine:
-    """
-    Handles mutation + selection of ideas
-    """
-
-    twists = [
-        "for space missions",
-        "with eco-friendly materials",
-        "that adapts in real-time",
-        "for children in remote areas",
-        "with gamification elements"
-    ]
-
     def __init__(self):
         self.generator = IdeaGenerator()
-
-    def mutate(self, idea: str) -> str:
-        """Add a random twist, avoiding duplicates"""
-        twist = random.choice(self.twists)
-        if twist in idea:
-            # If already applied, pick another one
-            available = [t for t in self.twists if t not in idea]
-            if available:
-                twist = random.choice(available)
-            else:
-                return idea  # no new twist possible
-        return f"{idea} {twist}"
-
-
-    def select(self, ideas, top_k=3):
-        """
-        Basic selection: pick top_k diverse ideas
-        (for now, just random sample)
-        """
-        return random.sample(ideas, min(top_k, len(ideas)))
+        self.polisher = IdeaPolisher()
+        self.mutator = IdeaMutator()
 
     def evolve(self, n=5, generations=3):
-        """
-        Full evolutionary loop
-        """
-        pool = self.generator.generate(n)
-        history = [pool]
+        """Run full evolutionary pipeline of ideas."""
+        # Step 1: Generate initial population
+        population = self.generator.generate(n)
+        population = [self.polisher.polish(idea) for idea in population]
 
-        for _ in range(generations):
-            mutated = [self.mutate(idea) for idea in pool]
-            pool = self.select(mutated, top_k=n)
-            history.append(pool)
+        history = [population.copy()]  # ✅ Keep history for return
 
-        return history
+        for gen in range(1, generations + 1):
+            next_population = []
+            for idea in population:
+                mutated = self.mutator.mutate(idea, n=1)
+                polished = self.polisher.polish(mutated)
+                next_population.append(polished)
+            population = next_population
+            history.append(population.copy())  # ✅ Save generation in history
+
+        return history  # ✅ Return full evolution history

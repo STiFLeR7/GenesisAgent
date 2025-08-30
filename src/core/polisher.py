@@ -1,32 +1,50 @@
 # src/core/polisher.py
 
 import re
+import random
 
 class IdeaPolisher:
-    """Refine and polish raw ideas into more concise, appealing text."""
+    """Refine raw ideas with novelty, clarity, and feasibility heuristics."""
 
     def __init__(self):
-        # could later plug into LLM-based refinement
-        pass
+        self.prompts = [
+            "Imagine pitching this to investors: ",
+            "Think of this as a startup tagline: ",
+            "Make it sound futuristic yet practical: ",
+        ]
+
+    def score(self, idea: str):
+        """Return novelty, clarity, and feasibility scores (0-10)."""
+        novelty = min(10, max(1, len(set(idea.split())) // 2))
+        clarity = 10 - (idea.count(",") + idea.count(";"))  # penalize clutter
+        feasibility = 10 - (len(idea.split()) // 12)        # very long → less feasible
+
+        return {
+            "novelty": max(1, novelty),
+            "clarity": max(1, clarity),
+            "feasibility": max(1, feasibility)
+        }
 
     def polish(self, idea: str) -> str:
         if not idea or not isinstance(idea, str):
             return "Invalid idea"
 
-        refined = idea.strip()
+        raw = idea.strip()
+        scores = self.score(raw)
 
-        # Capitalize first letter
-        refined = refined[0].upper() + refined[1:] if refined else refined
+        # Remove redundant whitespace
+        refined = re.sub(r"\s+", " ", raw)
 
-        # Remove excessive whitespace
-        refined = re.sub(r"\s+", " ", refined)
+        # Add engagement flair if too bland
+        if scores["novelty"] < 5:
+            refined = f"Unexpected twist: {refined}"
 
-        # Ensure ending punctuation
+        # Ensure punchy ending
         if not refined.endswith(('.', '!', '?')):
             refined += "."
 
-        # Make it slightly more engaging (hacky heuristic)
-        if "idea" not in refined.lower():
-            refined = f"✨ {refined}"
+        # Inject a creative framing occasionally
+        if scores["clarity"] < 6 or scores["feasibility"] < 6:
+            refined = random.choice(self.prompts) + refined
 
-        return refined
+        return f"✨ {refined} [N:{scores['novelty']}/10 | C:{scores['clarity']}/10 | F:{scores['feasibility']}/10]"
