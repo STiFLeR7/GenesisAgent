@@ -1,22 +1,35 @@
+# src/core/mutator.py
 import random
 
-class Mutator:
-    def __init__(self):
-        self.twist_pool = [
-            "for children", "for space missions", "using biodegradable materials",
-            "using self-healing polymers", "with gamification elements",
-            "with gesture control", "in extreme weather zones",
-            "that adapts in real-time", "with collaborative features",
-        ]
-        self.max_total_twists = 3  # max twists added per idea
+TWISTS = [
+    "for children",
+    "for space missions",
+    "in extreme weather zones",
+    "with gamification elements",
+    "with gesture control",
+    "with collaborative features",
+    "using self-healing polymers",
+    "using biodegradable materials",
+]
 
-    def mutate(self, idea):
-        """
-        Adds a limited number of twists to an idea while avoiding excessive repetition.
-        """
-        twists = random.sample(self.twist_pool, k=self.max_total_twists)
-        mutated = idea
+class Mutator:
+    def random_idea(self):
+        # Return a base idea randomly
+        base_ideas = [
+            "A drone that plants micro-seeds in urban cracks",
+            "Furniture that adapts its shape based on mood",
+            "An AI that generates bedtime stories",
+            "A pen that converts handwriting directly to code",
+            "A wearable that translates emotions into colors",
+        ]
+        return random.choice(base_ideas)
+
+    def mutate(self, idea_text, max_twists=3):
+        twists_applied = 0
+        twists_to_apply = min(max_twists, len(TWISTS))
+        twists = random.sample(TWISTS, twists_to_apply)
         for twist in twists:
-            if twist not in mutated:
-                mutated += f" {twist}"
-        return mutated
+            if twist not in idea_text:
+                idea_text += f" {twist}"
+                twists_applied += 1
+        return idea_text, twists_applied
