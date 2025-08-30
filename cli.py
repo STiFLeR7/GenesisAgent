@@ -37,10 +37,11 @@ def evolve(n, generations):
     evo = EvolutionEngine()
     history = evo.evolve(n=n, generations=generations)
 
-    for g, ideas in enumerate(history):
-        console.print(f"\n[bold yellow]Generation {g}[/]")
-        for i, idea in enumerate(ideas, 1):
-            console.print(f"  [cyan]Idea {i}:[/] {idea}")
+    if history is None or not history:
+        console.print("[bold red]Evolution returned no ideas![/]")
+        return
+
+    console.print("\n[bold green]Evolution Complete![/]")
 
 
 # -------------------
