@@ -1,29 +1,24 @@
 # src/core/evolution.py
+from .generator import IdeaGenerator
 from .mutator import Mutator
 
 class EvolutionEngine:
     def __init__(self):
+        self.generator = IdeaGenerator()
         self.mutator = Mutator()
-        self.max_total_twists = 5  # cap total twists per idea
 
-    def evolve(self, n=5, generations=3):
-        # Initialize ideas with a twist count tracker
-        ideas = [{"text": self.mutator.random_idea(), "twists": 0} for _ in range(n)]
-        history = []
+    def evolve(self, n=5, generations=3, max_twists=3):
+        """Evolve ideas over multiple generations."""
+        # Generation 0: initial ideas
+        ideas = self.generator.generate(n)
+        history = [ideas.copy()]
 
-        for gen in range(generations):
-            gen_ideas = []
+        for gen in range(1, generations + 1):
+            new_ideas = []
             for idea in ideas:
-                available_twists = self.max_total_twists - idea["twists"]
-                if available_twists <= 0:
-                    mutated_text = idea["text"]  # no more twists allowed
-                else:
-                    mutated_text, added_twists = self.mutator.mutate(
-                        idea["text"], max_twists=available_twists
-                    )
-                    idea["twists"] += added_twists
-                    idea["text"] = mutated_text
+                mutated = self.mutator.mutate(idea, max_twists=max_twists)
+                new_ideas.append(mutated)
+            history.append(new_ideas)
+            ideas = new_ideas
 
-                gen_ideas.append(mutated_text)
-            history.append(gen_ideas)
         return history

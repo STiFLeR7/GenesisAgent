@@ -1,9 +1,9 @@
-﻿import click
+﻿# cli.py
+import click
 from rich.console import Console
 from src.core.generator import IdeaGenerator
 from src.core.evolution import EvolutionEngine
-from src.core.polisher import IdeaPolisher
-from src.utils.exporter import Exporter
+from src.core.polisher import Polisher
 
 console = Console()
 
@@ -30,17 +30,18 @@ def generate(n):
 @cli.command()
 @click.option("--n", default=5, help="Number of ideas per generation")
 @click.option("--generations", default=3, help="Number of evolutionary steps")
-@click.option("--max-twists", default=5, help="Maximum twists per idea")
+@click.option("--max-twists", default=3, help="Maximum twists per idea")
 def evolve(n, generations, max_twists):
-    """Evolve creative ideas over multiple generations with stacking safeguard"""
+    """Evolve creative ideas over multiple generations"""
     evo = EvolutionEngine()
-    evo.max_total_twists = max_twists
-    history = evo.evolve(n=n, generations=generations)
+    history = evo.evolve(n=n, generations=generations, max_twists=max_twists)
 
     for g, ideas in enumerate(history):
         console.print(f"\n[bold yellow]Generation {g}[/]")
         for i, idea in enumerate(ideas, 1):
             console.print(f"  [cyan]Idea {i}:[/] {idea}")
+
+    console.print("\n[bold green]Evolution Complete![/]")
 
 # -------------------
 # Polish Command
@@ -50,23 +51,9 @@ def evolve(n, generations, max_twists):
 def polish(idea):
     """Polish/refine a given idea"""
     idea_text = " ".join(idea)
-    polisher = IdeaPolisher()
+    polisher = Polisher()
     refined = polisher.polish(idea_text)
     console.print(f"[bold green]Polished Idea:[/] {refined}")
-
-# -------------------
-# Export Command
-# -------------------
-@cli.command()
-@click.option("--filename", default="ideas.json", help="File to save ideas")
-@click.option("--format", type=click.Choice(["json", "txt"]), default="json", help="Export format")
-@click.option("--n", default=5, help="Number of ideas to generate before export")
-def export(filename, format, n):
-    """Generate ideas and export them to a file"""
-    gen = IdeaGenerator()
-    ideas = gen.generate(n)
-    Exporter.save(ideas, filename, format=format)
-    console.print(f"[bold magenta]Exported {len(ideas)} ideas to {filename} ({format})[/]")
 
 if __name__ == "__main__":
     cli()

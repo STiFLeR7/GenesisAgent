@@ -1,14 +1,14 @@
+# src/core/generator.py
 import random
 
 class IdeaGenerator:
-    def __init__(self):
-        self.base_ideas = [
-            "An AI that generates bedtime stories",
-            "Furniture that adapts its shape based on mood",
-            "A wearable that translates emotions into colors",
-            "A drone that plants micro-seeds in urban cracks",
-            "A pen that converts handwriting directly to code"
-        ]
+    BASE_IDEAS = [
+        "An AI that generates bedtime stories",
+        "A wearable that translates emotions into colors",
+        "A pen that converts handwriting directly to code",
+        "Furniture that adapts its shape based on mood",
+        "A drone that plants micro-seeds in urban cracks",
+    ]
 
     def generate(self, n=3):
-        return random.sample(self.base_ideas, n)
+        return random.sample(self.BASE_IDEAS, n)
