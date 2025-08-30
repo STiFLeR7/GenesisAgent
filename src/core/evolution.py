@@ -1,21 +1,26 @@
 from .mutator import Mutator
+from .generator import IdeaGenerator
 
 class EvolutionEngine:
     def __init__(self):
         self.mutator = Mutator()
+        self.generator = IdeaGenerator()
 
     def evolve(self, n=5, generations=3):
-        # Initialize first generation
+        """
+        Evolves ideas over multiple generations using stacking-safe mutations.
+        """
         history = []
-        ideas = [self.mutator.random_idea() for _ in range(n)]
+        # Generation 0: base ideas
+        ideas = self.generator.generate(n)
         history.append(ideas)
 
-        # Evolve subsequent generations
-        for _ in range(1, generations + 1):
-            next_gen = []
-            for idea in history[-1]:
-                mutated = self.mutator.mutate(idea, max_twists=3)
-                next_gen.append(mutated)
-            history.append(next_gen)
+        for g in range(1, generations + 1):
+            new_generation = []
+            for idea in ideas:
+                mutated = self.mutator.mutate(idea)
+                new_generation.append(mutated)
+            history.append(new_generation)
+            ideas = new_generation  # update for next generation
 
         return history
