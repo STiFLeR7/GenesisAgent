@@ -14,9 +14,23 @@ class Mutator:
             "with gesture control"
         ]
 
-    def mutate(self, idea):
-        twist = random.choice(self.twists)
-        return f"{idea} {twist}"
+    def mutate(self, idea, max_twists=3):
+        """
+        Apply random twists to an idea without repeating twists already applied.
+        """
+        # Check which twists are not already in the idea
+        available_twists = [t for t in self.twists if t not in idea]
+
+        if not available_twists:
+            return idea  # Nothing left to add
+
+        num_additions = min(max_twists, len(available_twists))
+        selected = random.sample(available_twists, num_additions)
+
+        for twist in selected:
+            idea += f" {twist}"
+
+        return idea
 
     def random_idea(self):
         base_ideas = [

@@ -11,4 +11,4 @@ class IdeaGenerator:
         ]
 
     def generate(self, n=3):
-        return random.sample(self.base_ideas, min(n, len(self.base_ideas)))
+        return random.sample(self.base_ideas, n)
