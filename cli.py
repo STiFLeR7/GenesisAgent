@@ -66,5 +66,17 @@ def polish(idea):
     refined = polisher.polish(idea_text)
     console.print(f"[bold green]Polished Idea:[/] {refined}")
 
+# -------------------
+# Autonomous Command
+# -------------------
+@cli.command()
+@click.option("--n", default=5, help="Number of ideas per generation")
+@click.option("--generations", default=3, help="Number of generations")
+@click.option("--seed", default=None, type=int, help="Random seed for reproducibility")
+def auto(n, generations, seed):
+    """Run autonomous idea evolution"""
+    from src.core.autonomous import evolve_ideas
+    evolve_ideas(n=n, generations=generations, seed=seed)
+
 if __name__ == "__main__":
     cli()
