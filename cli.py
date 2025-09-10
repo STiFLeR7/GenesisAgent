@@ -88,7 +88,11 @@ def auto(n, generations, seed):
     from src.core.autonomous import evolve_ideas
 
     # evolve_ideas will print progress and save best ideas
-    evolve_ideas(n=n, generations=generations, seed=seed)
+    best = evolve_ideas(n=n, generations=generations, seed=seed)
+
+    console.print("\n[bold green]Autonomous run complete. Hall of top ideas saved.[/]")
+    for i, idea in enumerate(best, 1):
+        console.print(f"[bold magenta]{i}.[/] {idea}")
 
 
 # -------------------
