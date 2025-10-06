@@ -1,53 +1,42 @@
-import random
-from src.core.evolution import EvolutionEngine
+"""
+GenesisAgent v2.0.0 — Autonomous Cognitive Agent
+Each agent evolves ideas using generation, mutation, and symbolic cognition.
+"""
 
-class AgentMemory:
-    """Stores all ideas across generations"""
-    def __init__(self):
-        self.history = []
-
-    def add(self, generation, ideas):
-        self.history.append({"gen": generation, "ideas": ideas})
-
-    def get_all(self):
-        return self.history
+from src.core.generator import generate_idea
+from src.core.mutator import mutate_idea
+from src.cognition.symbolic_engine import recombine_ideas, infer_context
+from src.scorer import score_idea
+from src.utils.logger import log
 
 
-class SelfEvaluator:
-    """Scores ideas based on simple heuristics"""
-    @staticmethod
-    def score(idea: str) -> float:
-        # Very simple scoring: reward diversity + length (placeholder for now)
-        unique_words = len(set(idea.split()))
-        length_factor = len(idea.split())
-        return unique_words * 0.6 + length_factor * 0.4
+class Agent:
+    """An autonomous unit with symbolic cognition."""
 
+    def __init__(self, agent_id: int, config: dict | None = None):
+        self.agent_id = agent_id
+        self.config = config or {}
+        self.pool = []
 
-class GenesisAgent:
-    """Autonomous evolutionary creativity agent"""
-    def __init__(self, n=5, max_generations=5, goal=None):
-        self.engine = EvolutionEngine()
-        self.memory = AgentMemory()
-        self.evaluator = SelfEvaluator()
-        self.n = n
-        self.max_generations = max_generations
-        self.goal = goal if goal else "creative exploration"
+    def evolve(self, generations: int = 3) -> list[dict]:
+        """Run full cognitive evolution: generation → mutation → recombination."""
+        log(f"[Agent-{self.agent_id}] Evolution start ({generations} generations)")
+        last_idea = None
 
-    def run(self):
-        pool = self.engine.generator.generate(self.n)
-        self.memory.add(0, pool)
-
-        for gen in range(1, self.max_generations + 1):
-            mutated = [self.engine.mutate(idea) for idea in pool]
-            scored = [(idea, self.evaluator.score(idea)) for idea in mutated]
-            # Select top-n by score
-            scored.sort(key=lambda x: x[1], reverse=True)
-            pool = [idea for idea, _ in scored[:self.n]]
-            self.memory.add(gen, pool)
-
-            # Simple stop condition: if avg score above threshold
-            avg_score = sum(score for _, score in scored) / len(scored)
-            if avg_score > 25:  # arbitrary threshold for now
-                break
-
-        return self.memory.get_all()
+        for gen in range(generations):
+            idea = generate_idea(self.config.get("theme"))
+            mutated = mutate_idea(idea)
+            ctx = infer_context(mutated)
+            hybrid = recombine_ideas(mutated, last_idea) if last_idea else mutated
+            last_idea = hybrid
+            fitness = score_idea(hybrid)
+            record = {
+                "idea": hybrid,
+                "score": fitness,
+                "context": ctx,
+                "generation": gen,
+                "agent_id": self.agent_id,
+            }
+            self.pool.append(record)
+            log(f"[Agent-{self.agent_id}] Gen {gen+1}: Score={fitness:.3f}, Keywords={ctx['keywords'][:3]}")
+        return self.pool

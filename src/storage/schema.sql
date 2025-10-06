@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS ideas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT,
+    score REAL,
+    agent_id INTEGER,
+    generation INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
