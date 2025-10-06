@@ -1,4 +1,4 @@
-from src.core.population import Population
+from src.core.population_manager import Population
 from src.utils.logger import log
 
 def run(n_agents: int = 3, generations: int = 3):

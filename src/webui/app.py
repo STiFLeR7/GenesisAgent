@@ -1,152 +1,128 @@
 """
-GenesisAgent v2.0.0 Chat API — powered by FastAPI + Uvicorn
-Run with:  uvicorn src.webui.app:app --reload --port 8000
+GenesisAgent v2.0.0 — Localhost Chat Server
+Run with:
+    uvicorn src.webui.app:app --reload --port 8000
 """
 
-from fastapi import FastAPI, WebSocket, Request
-from fastapi.responses import HTMLResponse
-from src.storage.persistence import init_db, fetch_top
-from src.core.population_manager import Population
-from src.analytics.dashboard import print_dashboard
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from pathlib import Path
 
-# Initialize DB and app
+from src.storage.persistence import init_db, fetch_top, store_idea
+from src.core.population_manager import Population
+
+# ---------------------------------------------------------------------
+# Paths & Initialization
+# ---------------------------------------------------------------------
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "static"
+INDEX_FILE = STATIC_DIR / "index.html"
+
+# Initialize DB + population
 init_db()
-app = FastAPI(title="GenesisAgent v2.0.0 Chat API")
 population = Population(n_agents=3, crossbreed_rate=0.4)
 
+# FastAPI instance
+app = FastAPI(title="GenesisAgent v2.0.0 — Localhost Chat")
 
-@app.get("/")
-async def home():
-    """Simple HTML interface."""
-    html = """
-    <html>
-      <head><title>GenesisAgent Chat</title></head>
-      <body style="background-color:#111;color:#fff;font-family:monospace;">
-        <h2>GenesisAgent v2.0.0 — Cognitive Chatbot</h2>
-        <form id="form">
-            <input type="text" id="prompt" style="width:70%;" placeholder="Ask GenesisAgent..." autofocus />
-            <button>Send</button>
-        </form>
-        <pre id="response"></pre>
-        <script>
-          const form = document.getElementById("form");
-          form.addEventListener("submit", async (e)=>{
-              e.preventDefault();
-              const input = document.getElementById("prompt").value;
-              const res = await fetch('/chat?prompt=' + encodeURIComponent(input));
-              const data = await res.json();
-              document.getElementById("response").innerText = data.reply;
-          });
-        </script>
-      </body>
-    </html>
-    """
-    return HTMLResponse(html)
+# CORS middleware (for JS access)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Serve static files under /static
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+# ---------------------------------------------------------------------
+# In-memory conversation state
+# ---------------------------------------------------------------------
+conversation_history: list[dict] = []
+
+# ---------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------
+
+@app.get("/", response_class=FileResponse)
+async def serve_home():
+    """Serve the main React frontend."""
+    return FileResponse(INDEX_FILE)
 
 
-@app.get("/chat")
-async def chat(prompt: str):
+@app.post("/chat")
+async def chat_post(request: Request):
     """
-    Generate evolved ideas based on user prompt.
-    Uses symbolic cognition + population-level evolution.
+    Run GenesisAgent evolution loop for the user prompt (POST JSON).
+    Body: {"prompt": "your prompt"}
+    Returns: {"prompt_sent": "...", "reply": "...", "conversation_count": N}
     """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    prompt = body.get("prompt", "") if isinstance(body, dict) else ""
+    if not isinstance(prompt, str):
+        prompt = str(prompt)
+
+    # Run evolution and pick best
     records = population.evolve_all(generations=2)
-    # Pick the highest scoring idea and return it
-    best = sorted(records, key=lambda x: x["score"], reverse=True)[0]
-    reply = (
-        f"Prompt: {prompt}\n\n"
-        f"GenesisAgent proposes:\n"
-        f"→ {best['idea']} (score {best['score']})"
-    )
-    return {"reply": reply}
+    if not records:
+        reply = "No ideas generated."
+        best = {"idea": "", "score": 0.0, "agent_id": -1, "generation": -1}
+    else:
+        best = max(records, key=lambda x: x.get("score", 0.0))
+        reply = (
+            f"Prompt: {prompt}\n\n"
+            f"GenesisAgent proposes:\n"
+            f"→ {best.get('idea','')} (score {best.get('score',0.0):.3f})"
+        )
+
+    # Persist best idea (if present)
+    try:
+        store_idea(best.get("idea", ""), best.get("score", 0.0),
+                   best.get("agent_id", -1), best.get("generation", -1))
+    except Exception:
+        # persistence failure shouldn't break response
+        pass
+
+    # Update conversation memory
+    conversation_history.append({"prompt": prompt, "reply": reply})
+
+    return JSONResponse({
+        "prompt_sent": prompt,
+        "reply": reply,
+        "conversation_count": len(conversation_history)
+    })
 
 
-@app.get("/top")
-async def get_top(limit: int = 5):
-    """Retrieve top ideas from SQLite."""
-    data = fetch_top(limit)
+@app.get("/api/top")
+async def get_top(limit: int = 6):
+    """Retrieve top evolved ideas from SQLite."""
+    try:
+        data = fetch_top(limit)
+    except Exception:
+        data = []
     return {"ideas": [{"content": c, "score": s} for c, s in data]}
 
 
-@app.get("/dashboard")
-async def dashboard():
-    """Return a quick CLI-like dashboard view."""
-    records = population.evolve_all(generations=1)
-    print_dashboard(records)
-    return {"status": "ok", "message": "Dashboard printed to console"}
-"""
-GenesisAgent v2.0.0 Chat API — powered by FastAPI + Uvicorn
-Run with:  uvicorn src.webui.app:app --reload --port 8000
-"""
-
-from fastapi import FastAPI, WebSocket, Request
-from fastapi.responses import HTMLResponse
-from src.storage.persistence import init_db, fetch_top
-from src.core.population_manager import Population
-from src.analytics.dashboard import print_dashboard
-
-# Initialize DB and app
-init_db()
-app = FastAPI(title="GenesisAgent v2.0.0 Chat API")
-population = Population(n_agents=3, crossbreed_rate=0.4)
+@app.get("/api/history")
+async def get_history():
+    """Return recent conversation memory (last 10)."""
+    return {"history": conversation_history[-10:]}
 
 
-@app.get("/")
-async def home():
-    """Simple HTML interface."""
-    html = """
-    <html>
-      <head><title>GenesisAgent Chat</title></head>
-      <body style="background-color:#111;color:#fff;font-family:monospace;">
-        <h2>GenesisAgent v2.0.0 — Cognitive Chatbot</h2>
-        <form id="form">
-            <input type="text" id="prompt" style="width:70%;" placeholder="Ask GenesisAgent..." autofocus />
-            <button>Send</button>
-        </form>
-        <pre id="response"></pre>
-        <script>
-          const form = document.getElementById("form");
-          form.addEventListener("submit", async (e)=>{
-              e.preventDefault();
-              const input = document.getElementById("prompt").value;
-              const res = await fetch('/chat?prompt=' + encodeURIComponent(input));
-              const data = await res.json();
-              document.getElementById("response").innerText = data.reply;
-          });
-        </script>
-      </body>
-    </html>
-    """
-    return HTMLResponse(html)
+@app.get("/api/clear-history")
+async def clear_history():
+    """Reset in-memory chat history."""
+    conversation_history.clear()
+    return {"status": "cleared", "remaining": len(conversation_history)}
 
 
-@app.get("/chat")
-async def chat(prompt: str):
-    """
-    Generate evolved ideas based on user prompt.
-    Uses symbolic cognition + population-level evolution.
-    """
-    records = population.evolve_all(generations=2)
-    # Pick the highest scoring idea and return it
-    best = sorted(records, key=lambda x: x["score"], reverse=True)[0]
-    reply = (
-        f"Prompt: {prompt}\n\n"
-        f"GenesisAgent proposes:\n"
-        f"→ {best['idea']} (score {best['score']})"
-    )
-    return {"reply": reply}
-
-
-@app.get("/top")
-async def get_top(limit: int = 5):
-    """Retrieve top ideas from SQLite."""
-    data = fetch_top(limit)
-    return {"ideas": [{"content": c, "score": s} for c, s in data]}
-
-
-@app.get("/dashboard")
-async def dashboard():
-    """Return a quick CLI-like dashboard view."""
-    records = population.evolve_all(generations=1)
-    print_dashboard(records)
-    return {"status": "ok", "message": "Dashboard printed to console"}
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "msg": "GenesisAgent is running"}
